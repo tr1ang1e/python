@@ -1,9 +1,11 @@
 # 'class' is a keyword to create new type = new instance of type 'type'
 class Class:
+    # class-specific
     attr_type = None
     at = 'class'
 
     def __init__(self):
+        # instance-specific
         self.attr_instance = None
         self.at = 'instance'
 
@@ -15,7 +17,7 @@ def example():
     print("\n:: __dict__ examples ")
     print(Class.__dict__)           # keeps only class-specific attributes (no 'self' attributes)
     print(Class().__dict__)         # keeps only instance-specific attributes (no 'cls' attributes)
-    print(Class().attr_instance)    # access to class-specific attribute is allowed
+    print(Class().attr_type)        # access to class-specific attribute is allowed
 
     # type and instance attributes might have same name
     print("\n:: class and instance attributes ")
@@ -32,8 +34,11 @@ def example():
     '''
     print("\n:: working with attributes ")
 
-    # get attribute value
-    print(Class.attr_type == getattr(Class, "attr_type", None))     # last arg is not necessary but might be helpful
+    # get attribute values, search order:
+    #     class = Class._dict_ -> Class.{_bases_}._dict_ -> Class._class_._dict_ -> Class._class_.{bases}._dict_
+    #     object = Class()._dict_ -> Class._dict_ -> Class.{_bases_}._dict_
+    print(Class.attr_type == getattr(Class, "attr_type", None))
+    print(Class().at == getattr(Class(), "at", None))
 
     # set value for existent or new attribute
     Class.new_attr_1 = 42

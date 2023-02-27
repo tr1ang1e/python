@@ -19,6 +19,10 @@ def example():
     print(Class.__class__)          # 'Class'    is object  -  instance of type 'type' (type of types!)
     print(Class().__class__)        # 'Class()'  is object  -  instance of type 'Class'
 
+    # access to class' base classes
+    print("\n:: class' base classes")
+    print(Class.__bases__)
+
     # __class__ and 'type' are the same
     print("\n:: __class__ and type()")
     print(Class.__class__ is type(Class) is type)
@@ -31,6 +35,12 @@ def example():
     c.__class__ = AnotherClass
     print(c.class_var)      # will be from AnotherClass
     print(c.my_variable)    # will be from Class  <<  __init__ wouldn't be called
+
+    # every class is an object but not all objects are classes
+    # class is like simultaneously a template and an extended interface for object
+    print("\n:: class and object difference")
+    print(isinstance(Class, object), isinstance(Class, type))
+    print(isinstance(Class(), object), isinstance(Class(), type))
 
 
 if __name__ == '__main__':

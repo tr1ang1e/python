@@ -41,6 +41,9 @@ class Price:
         self.socket.start()
 
     def start_ticker(self, symbol: str, callback):
+        """
+            Must be called at least once
+        """
         ticker = symbol.lower() + "@ticker"
         if not (ticker in self.tickers):
             # callback will be invoked every time WebSocket proceed packet exchange

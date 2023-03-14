@@ -15,27 +15,48 @@ def get_credentials(credentials_file: str):
     return credentials_dict
 
 
+def handle_price_msg(msg):
+    """
+        main business logic function
+        TODO: Implement two thread logic
+    """
+    print(msg["c"])   # "c" = last price
+    return
+
+
 class Price:
+    """
+        Access to actual market prices
+        Access is processed via: https://binance-docs.github.io/apidocs/spot/en/#individual-symbol-ticker-streams
+            API = Individual Symbol Ticker Streams
+            description = 24-hour rolling window
+            update = 1000 ms
+            ticker = <symbol@>ticker
+    """
 
-    msg_total = 0
+    tickers = list()
 
-    def __init__(self, symbol: str):
+    def __init__(self):
         self.socket = WebSock()
         self.socket.start()
-        # print(self.socket.start_symbol_ticker_socket(callback=self.btc_handle_msg, symbol=symbol))                # 24h statistics / interval = 1000ms
-        # print(self.socket.start_depth_socket(callback=self.btc_handle_msg, symbol=symbol, interval=100))          # current depth  / interval = 100 or 1000ms
-        print(self.socket.start_symbol_book_ticker_socket(callback=self.btc_handle_msg, symbol=symbol))             # realtime bid and ask
 
-    def btc_handle_msg(self, msg):
-        self.msg_total += 1
-        # print(msg)
-        return
+    def start_ticker(self, symbol: str, callback):
+        ticker = symbol.lower() + "@ticker"
+        if not (ticker in self.tickers):
+            # callback will be invoked every time WebSocket proceed packet exchange
+            new_ticker = self.socket.start_symbol_ticker_socket(callback=callback, symbol=symbol.upper())
+            self.tickers.append(new_ticker)
 
+    # safe even if __init__ wasn't successful
     def stop(self):
         self.socket.stop()
 
+    def __del__(self):
+        self.stop()
+
 
 class Account:
+
     def __init__(self, credentials_file: str):
         credentials_dict = get_credentials(credentials_file)
         credentials_api = credentials_dict["api"]
@@ -43,27 +64,53 @@ class Account:
         self.api_demo = credentials_api["demo"]
         self.client = Client(self.api_demo["key_api"], self.api_demo["key_secret"])
 
-    # use Client.get_account() to avoid separate calls and reduce time costs
-    def print_spot_balance(self, assets: list):
-        print("Balance")
+    def get_balance(self, assets=("btc", "usdt"), base_asset="usdt"):
+        """
+            Slow operation. Bad to call in WebSocket callback function.
+            TODO: Implement two thread logic
+                1 = WebSocket communication
+                2 = trading logic
+        """
+        account_info = self.client.get_account()["balances"]
+        balances = dict()
+        balances["total"] = [base_asset, 0]
         for asset in assets:
-            balance_info = self.client.get_asset_balance(asset)
-            total_balance = float(balance_info['free']) + float(balance_info['locked'])
-            print("  {}: {}".format(asset, total_balance))
+            balances[asset] = dict()
+            for asset_info in account_info:
+                if asset_info["asset"].lower() == asset.lower():
+                    balances[asset]["free"] = float(asset_info["free"])
+                    balances[asset]["locked"] = float(asset_info["locked"])
+                    asset_total = balances[asset]["free"] + balances[asset]["locked"]
+                    if asset != base_asset:
+                        symbol = (asset + base_asset).upper()
+                        current_price = float(self.get_single_price(symbol))
+                        balances["total"][1] += current_price * asset_total
+                    else:
+                        balances["total"][1] += asset_total
+        balances["total"][1] = round(balances["total"][1], 8)
+        return balances
 
     def get_single_price(self, symbol: str):
-        price = self.client.get_symbol_ticker(symbol=symbol)
-        return price['price']
+        price_list = self.client.get_symbol_ticker(symbol=symbol)
+        return price_list['price']
+
+    def set_sell_limit_order(self, symbol, price, quantity):
+        print(self.client.order_limit_sell(symbol=symbol, price=price, quantity=quantity))
+        return
 
 
 if __name__ == "__main__":
     btc = None
+    price = None
     try:
         account = Account("./credentials.json")
-        account.print_spot_balance(['BTC', 'LTC', 'ETH'])
-        btc = Price('BTCUSDT')
-        sleep(6)
-        btc.stop()
-        print(btc.msg_total)
-    except KeyboardInterrupt:
-        btc.stop()
+        price = Price()
+        price.start_ticker("BTCUSDT", handle_price_msg)
+        sleep(4)
+        # account.set_sell_limit_order('BTCUSDT', 26700, 0.0006)
+        # sleep(2)
+        price.stop()
+    except Exception as e:
+        print(e)
+        if price:
+            price.stop()

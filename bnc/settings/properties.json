@@ -1,0 +1,19 @@
+{
+    "logging":
+    {
+        "account":
+        {
+            "directory": "./logs/",
+            "file": "account.log",
+            "size": 10000000,
+            "back": 3
+        },
+        "price":
+        {
+            "directory": "./logs/",
+            "file": "price.log",
+            "size": 10000000,
+            "back": 3
+        }
+    }
+}

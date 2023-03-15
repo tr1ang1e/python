@@ -1,0 +1,6 @@
+.*
+!.gitignore
+!.gitkeep
+
+credentials.json
+links.txt

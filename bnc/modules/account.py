@@ -1,7 +1,9 @@
-from .settings import Logfile, Api
+from .exceptions import BNCAttention, BNCExceptions, BNCCritical
+from .price import Price
+from .settings import Api, Logfile
 from .utilities import init_logger
 from binance.client import Client
-import binance.exceptions
+from binance.exceptions import BinanceAPIException
 
 
 class Order:
@@ -11,7 +13,6 @@ class Order:
 
         TODO: parse response for convenient access
     """
-
     def __init__(self, api_response):
         self.info = api_response
 
@@ -22,24 +23,66 @@ class Account:
         get account info, set and remove orders, etc.
 
         TODO:
+            - def __update_account_data(...)
             - def get_active_orders(...)
+            - def get_placed_orders(...)
             - def cansel_order(...)
     """
 
     buy_orders = dict()
     sell_orders = dict()
 
-    def __init__(self, api: Api, logfile: Logfile):
-        self.client = Client(api.key_api, api.key_secret)
-        self.check_permissions(api.permissions)
+    def __init__(self, api: Api, logfile: Logfile, price: Price = None):
+        self.client = None
+        self.price = price
+        self.get_client(api)
         self.logger = init_logger(logfile)
+        self.logger.info(f"Account instance is created, key_api: '{api.key_api[:4:]}...{api.key_api[-4::]}'")
 
-    def check_permissions(self, expected_permissions):
-        actual_permissions = self.client.get_account_api_permissions()
+    def get_client(self, api: Api):
+        """
+            Initialize account data and prepare environment.
+
+            return: no
+            raise: see invoked calls (__check_permissions, __update_account_data)
+        """
+        self.client = Client(api.key_api, api.key_secret)
+        self.__check_permissions(api.permissions)
+        self.__update_account_data()
+
+    def __check_permissions(self, expected_permissions):
+        """
+            Check if expected API permissions correspond to actual
+
+            return: no
+            raise: BNCAttention (UNSPECIFIED, API_ACCESS, API_PERMISSIONS)
+        """
+        try:
+            actual_permissions = self.client.get_account_api_permissions()
+        except BinanceAPIException as ex:
+            raise BNCAttention(
+                BNCExceptions.API_ACCESS,
+                f"BinanceAPIException: \n\terror: {ex.code} \n\tmessage: {ex.message}"
+            )
+        except Exception as ex:
+            raise BNCAttention(
+                BNCExceptions.UNSPECIFIED,
+                f"Unspecified exception: \n\ttype: {type(ex)} \n\tmessage: {ex}"
+            )
         for perm in expected_permissions:
             if not actual_permissions[perm]:
-                # TODO: exception
-                pass
+                raise BNCAttention(
+                    BNCExceptions.API_PERMISSIONS,
+                    "Check expected permissions and actual ones: https://www.binance.com/ru/my/settings/api-management"
+                )
+
+    def __update_account_data(self):
+        """
+            TODO: make connecting to account safe
+                - update balance
+                - synchronize opened orders
+        """
+        pass
 
     def get_balance(self, assets=("btc", "usdt"), base_asset="usdt"):
         """
@@ -109,7 +152,7 @@ class Account:
             self.logger.info("OPEN order placed successfully")
             self.buy_orders[response["newClientOrderId"]] = Order(response)
             result = True
-        except binance.exceptions.BinanceAPIException as api_exception:
+        except BinanceAPIException as api_exception:
             self.logger.error("APIException: {}. {}".format(api_exception.code, api_exception.message))
             pass
         except Exception as default_exception:
@@ -137,7 +180,7 @@ class Account:
             self.logger.info("CLOSE order placed successfully")
             self.sell_orders[response["newClientOrderId"]] = Order(response)
             result = True
-        except binance.exceptions.BinanceAPIException as api_exception:
+        except BinanceAPIException as api_exception:
             self.logger.error("APIException: {}. {}".format(api_exception.code, api_exception.message))
             pass
         except Exception as default_exception:

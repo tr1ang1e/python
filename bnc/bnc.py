@@ -9,10 +9,11 @@ TODO:
 """
 
 
-from modules import Logfile, Api, Settings
-from modules import carriage_return, init_logger
-from modules import Order, Account
+from modules import Account, Order
+from modules import BNCAttention, BNCCritical, BNCExceptions
 from modules import Price
+from modules import Api, Logfile, Settings
+from modules import carriage_return, init_logger
 
 
 def handle_price_msg(msg):
@@ -30,16 +31,20 @@ if __name__ == "__main__":
     try:
         settings = Settings("./settings")
         account = Account(settings.api_demo, settings.account_log)
-        account.get_balance()
+        # account.get_balance()
 
         # executed in parallel thread
-        # price = Price()
+        # price = Price(settings.price_log)
         # price.start_ticker("BTCUSDT", handle_price_msg)
         # sleep(4)
         # price.stop()
 
-    except Exception as e:
-        print(e)
+    except BNCAttention as ex:
+        print(ex)
+
+    except Exception as ex:
+        print(type(ex))
+        print(ex)
         if price:
             # price.stop()
             pass

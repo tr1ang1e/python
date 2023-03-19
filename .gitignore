@@ -3,5 +3,6 @@
 !.gitkeep
 
 *.log
+__pycache__
 credentials.json
 links.txt

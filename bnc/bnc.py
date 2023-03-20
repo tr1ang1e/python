@@ -1,11 +1,29 @@
 """
-TODO:
+TODO, long:
+
+    1. simple trading logic
+    2. convenient parameters setting:
+        - money management
+        - orders distance
+    3. telegram notifications
+    4. better multithread logic: split websocket callback and trading logic
+    5. test on historical data
+        - api: get historical data
+        - class Tester
+    6. reimplement in C
+
+TODO, current (1. simple trading logic):
+
+    - account.py: add exceptions
+    - account.py:
+        api: get_placed_orders
+        api: cansel_order
+        api: __update_account_data
+    - account.py: parce response for placed order
     - decide which information should be permanently shown if any
-    - implement multithread logic
-    - API:
-        - get historical data
-    - algorythm
-    - implement exceptions
+    - bnc.py:
+        handle_price_msg: implement trading logic
+        main: exceptions handle
 """
 
 

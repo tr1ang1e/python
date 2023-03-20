@@ -21,12 +21,6 @@ class Account:
     """
         Provide access to all necessary account actions, e.g.
         get account info, set and remove orders, etc.
-
-        TODO:
-            - def __update_account_data(...)
-            - def get_active_orders(...)
-            - def get_placed_orders(...)
-            - def cansel_order(...)
     """
 
     buy_orders = dict()
@@ -86,10 +80,8 @@ class Account:
 
     def get_balance(self, assets=("btc", "usdt"), base_asset="usdt"):
         """
-            Slow operation. Bad to call in WebSocket callback function.
-            TODO: Implement two thread logic
-                1 = WebSocket communication
-                2 = trading logic
+            Slow operation. Reimplement logic.
+            (bad to call in WebSocket callback function)
         """
         self.logger.debug(f"get_balance(assets={assets}, base_asset='{base_asset}')")
         account_info = self.client.get_account()["balances"]
@@ -120,8 +112,6 @@ class Account:
         """
             Get all orders were placed on
             market but still weren't executed
-
-            TODO: implement
         """
         self.logger.debug(f"get_placed_orders()")
         pass
@@ -137,8 +127,6 @@ class Account:
             Function implements OPEN position logic (long-trading).
             If order PRICE is GREATER than market price, the order
             will be executed by current market price.
-
-            TODO: information for logging
         """
         self.logger.debug(f"set_open_order(symbol='{symbol}', buy_price={buy_price}, quantity={quantity})")
         result = False
@@ -165,8 +153,6 @@ class Account:
             Function implements CLOSE position logic (long-trading).
             If order PRICE is LESS than market price, the order
             will be executed by current market price.
-
-            TODO: information for logging
         """
         self.logger.debug(f"set_close_order(symbol='{symbol}', sell_price={sell_price}, quantity={quantity})")
         result = False
@@ -192,8 +178,6 @@ class Account:
         """
             Cansel order which was placed on
             market but still wasn't executed
-
-            TODO: implement
         """
         self.logger.debug(f"cancel_order(order_id={order_id})")
         pass

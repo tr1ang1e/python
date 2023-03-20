@@ -25,10 +25,9 @@ TODO, current (1. simple trading logic):
             - except
             - implement trading logic
         main: exceptions handle
-            - except ...
             - add trace
 """
-
+import traceback
 
 from modules import Account, Order
 from modules import BNCAttention, BNCCritical, BNCExceptions
@@ -69,13 +68,19 @@ if __name__ == "__main__":
         # price.stop()
 
     except IOError as ex:
+        ex_string = traceback.format_exc()
+        print(ex_string)
         print("Failed to get settings")
         print(ex)
     # BNCCritical doesn't require special handling,
     # due to no real account work wasn't started yet
     except (BNCAttention, BNCCritical) as ex:
+        ex_string = traceback.format_exc()
+        print(ex_string)
         print(ex)
     except Exception as ex:
+        ex_string = traceback.format_exc()
+        print(ex_string)
         print("Unknown EXCEPTION type raised")
         print(type(ex))
         print(ex)

@@ -14,16 +14,18 @@ TODO, long:
 
 TODO, current (1. simple trading logic):
 
-    - account.py: add exceptions
+    - account.py: add exceptions (+ migrate UNSPECIFIED to main)
     - account.py:
         api: get_placed_orders
-        api: cansel_order
         api: __update_account_data
+        api: add retry loops to place and cancel methods
     - account.py: parce response for placed order
     - decide which information should be permanently shown if any
     - bnc.py:
         handle_price_msg: implement trading logic
         main: exceptions handle
+            - except ...
+            - add trace
 """
 
 
@@ -36,8 +38,7 @@ from modules import carriage_return, init_logger
 
 def handle_price_msg(msg):
     """
-        main business logic function
-        TODO: implement two thread logic
+        Main business logic function
     """
     print(msg["c"])   # "c" = last price
     return

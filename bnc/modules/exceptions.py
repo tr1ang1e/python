@@ -1,12 +1,16 @@
 from enum import Enum
 
 
+bnc_lib_exc_str = "Binance lib exception:"
+
+
 class BNCExceptions(Enum):
     UNSPECIFIED = -1
     # '0' code is not used due to it usually indicates success
     API_ACCESS = 1
     API_PERMISSIONS = 2
     TICKER_START = 3
+    CANSEL_ORDER = 4
 
 
 class BNCAttention(Exception):

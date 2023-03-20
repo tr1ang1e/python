@@ -3,7 +3,9 @@ from .price import Price
 from .settings import Api, Logfile
 from .utilities import init_logger
 from binance.client import Client
-from binance.exceptions import BinanceAPIException, BinanceRequestException
+from binance.exceptions import BinanceAPIException, BinanceRequestException, BinanceOrderException, \
+    BinanceOrderMinAmountException, BinanceOrderMinPriceException, BinanceOrderMinTotalException, \
+    BinanceOrderUnknownSymbolException, BinanceOrderInactiveSymbolException
 
 
 class Order:
@@ -59,7 +61,7 @@ class Account:
         except BinanceAPIException as ex:
             raise BNCAttention(
                 BNCExceptions.API_ACCESS,
-                f"{bnc_lib_exc_str} \n\terror: {ex.code} \n\tmessage: {ex.message}"
+                f"{bnc_lib_exc_str} \n\ttype: {ex} \n\tmessage: {ex.message} \n\terror: {ex.code}"
             )
 
         # check if actual permissions are enough to satisfy required ones
@@ -110,7 +112,7 @@ class Account:
             error = f"\n\terror: {ex.code}" if hasattr(ex, "error") else ""
             raise BNCCritical(
                 BNCExceptions.API_ACCESS,
-                f"{bnc_lib_exc_str} \n\tmessage: {ex.message} {error}"
+                f"{bnc_lib_exc_str} \n\ttype: {ex} \n\tmessage: {ex.message} {error}"
             )
 
         self.logger.info("Balance:")
@@ -138,57 +140,91 @@ class Account:
         self.logger.info(f"      price={price_list['price']}")
         return price_list['price']
 
-    def set_open_order(self, symbol, buy_price, quantity):
+    def set_open_order(self, symbol, buy_price, quantity, attempts: int = 3):
         """
             Function implements OPEN position logic (long-trading).
             If order PRICE is GREATER than market price, the order
             will be executed by current market price.
+
+            return: no
+            raise: BNCAttention, BNCCritical (OPEN_ORDER)
         """
         self.logger.debug(f"set_open_order(symbol='{symbol}', buy_price={buy_price}, quantity={quantity})")
-        result = False
-        try:
-            response = self.client.order_limit_buy(
-                symbol=symbol,
-                price=buy_price,
-                quantity=quantity,
-                newOrderRespType="FULL"
-            )
-            self.logger.info("OPEN order placed successfully")
-            self.buy_orders[response["newClientOrderId"]] = Order(response)
-            result = True
-        except BinanceAPIException as api_exception:
-            self.logger.error("APIException: {}. {}".format(api_exception.code, api_exception.message))
-            pass
-        except Exception as default_exception:
-            self.logger.warning("Not specified exception case:")
-            self.logger.error(default_exception)
-        return result
+        for attempt in range(attempts):
+            try:
+                self.logger.debug(f"    attempt {attempt + 1} of {attempts}")
+                response = self.client.order_limit_buy(
+                    symbol=symbol,
+                    price=buy_price,
+                    quantity=quantity,
+                    newOrderRespType="FULL"
+                )
+                self.logger.info("OPEN order placed successfully")
+                self.buy_orders[response["newClientOrderId"]] = Order(response)
+            except (BinanceRequestException,
+                    BinanceAPIException,
+                    BinanceOrderException,
+                    BinanceOrderInactiveSymbolException
+                    ) as ex:
+                if (attempt + 1) < attempts:
+                    continue
+                error = f"\n\terror: {ex.code}" if hasattr(ex, "error") else ""
+                raise BNCCritical(
+                    BNCExceptions.OPEN_ORDER,
+                    f"{bnc_lib_exc_str} \n\ttype: {ex} \n\tmessage: {ex.message} {error}"
+                )
+            except (BinanceOrderMinAmountException,
+                    BinanceOrderMinPriceException,
+                    BinanceOrderMinTotalException,
+                    BinanceOrderUnknownSymbolException,
+                    ) as ex:
+                raise BNCAttention(
+                    BNCExceptions.OPEN_ORDER,
+                    f"{bnc_lib_exc_str} \n\ttype: {ex} \n\tmessage: {ex.message}"
+                )
 
-    def set_close_order(self, symbol, sell_price, quantity):
+    def set_order_tp(self, symbol, sell_price, quantity, attempts: int = 3):
         """
             Function implements CLOSE position logic (long-trading).
             If order PRICE is LESS than market price, the order
             will be executed by current market price.
+
+            return: no
+            raise: BNCAttention, BNCCritical (TP_ORDER)
         """
         self.logger.debug(f"set_close_order(symbol='{symbol}', sell_price={sell_price}, quantity={quantity})")
-        result = False
-        try:
-            response = self.client.order_limit_sell(
-                symbol=symbol,
-                price=sell_price,
-                quantity=quantity,
-                newOrderRespType="FULL"
-            )
-            self.logger.info("CLOSE order placed successfully")
-            self.sell_orders[response["newClientOrderId"]] = Order(response)
-            result = True
-        except BinanceAPIException as api_exception:
-            self.logger.error("APIException: {}. {}".format(api_exception.code, api_exception.message))
-            pass
-        except Exception as default_exception:
-            self.logger.warning("Not specified exception case:")
-            self.logger.error(default_exception)
-        return result
+        for attempt in range(attempts):
+            try:
+                self.logger.debug(f"    attempt {attempt + 1} of {attempts}")
+                response = self.client.order_limit_sell(
+                    symbol=symbol,
+                    price=sell_price,
+                    quantity=quantity,
+                    newOrderRespType="FULL"
+                )
+                self.logger.info("TAKE PROFIT order placed successfully")
+                self.sell_orders[response["newClientOrderId"]] = Order(response)
+            except (BinanceRequestException,
+                    BinanceAPIException,
+                    BinanceOrderException,
+                    BinanceOrderInactiveSymbolException
+                    ) as ex:
+                if (attempt + 1) < attempts:
+                    continue
+                error = f"\n\terror: {ex.code}" if hasattr(ex, "error") else ""
+                raise BNCCritical(
+                    BNCExceptions.TP_ORDER,
+                    f"{bnc_lib_exc_str} \n\ttype: {ex} \n\tmessage: {ex.message} {error}"
+                )
+            except (BinanceOrderMinAmountException,
+                    BinanceOrderMinPriceException,
+                    BinanceOrderMinTotalException,
+                    BinanceOrderUnknownSymbolException,
+                    ) as ex:
+                raise BNCAttention(
+                    BNCExceptions.TP_ORDER,
+                    f"{bnc_lib_exc_str} \n\ttype: {ex} \n\tmessage: {ex.message}"
+                )
 
     def cancel_order(self, symbol: str, order_id: str, attempts: int = 3):
         """
@@ -209,5 +245,5 @@ class Account:
                 error = f"\n\terror: {ex.code}" if hasattr(ex, "error") else ""
                 raise BNCAttention(
                     BNCExceptions.CANSEL_ORDER,
-                    f"{bnc_lib_exc_str} \n\tmessage: {ex.message} {error}"
+                    f"{bnc_lib_exc_str} \n\ttype: {ex} \n\tmessage: {ex.message} {error}"
                 )

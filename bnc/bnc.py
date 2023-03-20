@@ -14,15 +14,16 @@ TODO, long:
 
 TODO, current (1. simple trading logic):
 
-    - account.py: add exceptions (+ migrate UNSPECIFIED to main)
     - account.py:
+        class Order implementation
         api: get_placed_orders
         api: __update_account_data
-        api: add retry loops to place and cancel methods
     - account.py: parce response for placed order
     - decide which information should be permanently shown if any
     - bnc.py:
-        handle_price_msg: implement trading logic
+        handle_price_msg:
+            - except
+            - implement trading logic
         main: exceptions handle
             - except ...
             - add trace
@@ -36,12 +37,17 @@ from modules import Api, Logfile, Settings
 from modules import carriage_return, init_logger
 
 
+handler_logger = None
+
+
 def handle_price_msg(msg):
     """
         Main business logic function
     """
-    print(msg["c"])   # "c" = last price
-    return
+    try:
+        print(msg["c"])   # "c" = last price
+    except Exception as ex:
+        pass
 
 
 if __name__ == "__main__":
@@ -49,7 +55,11 @@ if __name__ == "__main__":
     price = None
     try:
         settings = Settings("./settings")
+
+        # Account instance must be created before Price one, reason:
+        # Account logger is used inside callback involved by Price streams
         account = Account(settings.api_demo, settings.account_log)
+        handler_logger = account.logger
         # account.get_balance()
 
         # executed in parallel thread
@@ -58,12 +68,16 @@ if __name__ == "__main__":
         # sleep(4)
         # price.stop()
 
-    except BNCAttention as ex:
+    except IOError as ex:
+        print("Failed to get settings")
         print(ex)
-
+    # BNCCritical doesn't require special handling,
+    # due to no real account work wasn't started yet
+    except (BNCAttention, BNCCritical) as ex:
+        print(ex)
     except Exception as ex:
+        print("Unknown EXCEPTION type raised")
         print(type(ex))
         print(ex)
-        if price:
-            # price.stop()
-            pass
+        # if price is not None:
+        #    price.stop()

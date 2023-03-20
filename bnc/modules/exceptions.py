@@ -10,7 +10,9 @@ class BNCExceptions(Enum):
     API_ACCESS = 1
     API_PERMISSIONS = 2
     TICKER_START = 3
-    CANSEL_ORDER = 4
+    OPEN_ORDER = 4
+    TP_ORDER = 5
+    CANSEL_ORDER = 6
 
 
 class BNCAttention(Exception):

@@ -15,5 +15,10 @@
             "size": 10000000,
             "back": 3
         }
+    },
+
+    "requests":
+    {
+        "recv_window": 5000
     }
 }

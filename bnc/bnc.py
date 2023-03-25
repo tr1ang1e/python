@@ -14,6 +14,10 @@ TODO, long:
 
 TODO, current (1. simple trading logic):
 
+    - ERROR: "-1022, Signature for this request is not valid"
+        > pip-upgrade
+        > new API's keys pair
+        see: https://dev.binance.vision/t/faq-signature-for-this-request-is-not-valid/176
     - account.py:
         class Order implementation
         api: get_placed_orders
@@ -24,8 +28,6 @@ TODO, current (1. simple trading logic):
         handle_price_msg:
             - except
             - implement trading logic
-        main: exceptions handle
-            - add trace
 """
 import traceback
 
@@ -52,14 +54,16 @@ def handle_price_msg(msg):
 if __name__ == "__main__":
     btc = None
     price = None
+    common_logger = None
     try:
         settings = Settings("./settings")
+        common_logger = init_logger(settings.account_log)
 
         # Account instance must be created before Price one, reason:
         # Account logger is used inside callback involved by Price streams
-        account = Account(settings.api_demo, settings.account_log)
-        handler_logger = account.logger
-        # account.get_balance()
+        account = Account(settings.api_demo, settings.recv_window, common_logger)
+        common_logger = account.logger
+        account.get_balance()
 
         # executed in parallel thread
         # price = Price(settings.price_log)
@@ -68,21 +72,20 @@ if __name__ == "__main__":
         # price.stop()
 
     except IOError as ex:
+        print("Failed to get settings")
         ex_string = traceback.format_exc()
         print(ex_string)
-        print("Failed to get settings")
-        print(ex)
     # BNCCritical doesn't require special handling,
     # due to no real account work wasn't started yet
     except (BNCAttention, BNCCritical) as ex:
         ex_string = traceback.format_exc()
         print(ex_string)
-        print(ex)
+        common_logger.error(ex)
     except Exception as ex:
+        print("Unknown EXCEPTION type raised")
         ex_string = traceback.format_exc()
         print(ex_string)
-        print("Unknown EXCEPTION type raised")
-        print(type(ex))
-        print(ex)
+        common_logger.error(type(ex))
+        common_logger.error(ex)
         # if price is not None:
         #    price.stop()

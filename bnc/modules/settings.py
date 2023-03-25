@@ -38,6 +38,7 @@ class Settings:
         ''' properties '''
         self.account_log = None
         self.price_log = None
+        self.recv_window = None
         self.load_properties(settings_dir)
         ''' credentials '''
         self.api_demo = None
@@ -52,6 +53,9 @@ class Settings:
         logging_dict = properties_dict["logging"]
         self.account_log = Logfile(logging_dict["account"])
         self.price_log = Logfile(logging_dict["price"])
+        ''' requests '''
+        logging_dict = properties_dict["requests"]
+        self.recv_window = logging_dict["recv_window"]
 
     def load_credentials(self, settings_dir):
         credentials_file = "credentials.json"

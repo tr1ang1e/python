@@ -11,7 +11,7 @@ def carriage_return():
 def init_logger(logfile: Logfile):
     pass
     ''' formatter '''
-    base_format = f"%(asctime)s.%(msecs)03d   | %(threadName)-11s  | %(filename)s:%(lineno)-4d  | %(levelname)-8s   >  %(message)s"
+    base_format = f"%(asctime)s.%(msecs)03d   | %(threadName)-11s  | %(filename)-14s | %(lineno)-4d  | %(levelname)-8s   >  %(message)s"
     timestamp_format = "%H:%M:%S"
     formatter = logging.Formatter(base_format, timestamp_format)
     ''' configure file logs '''

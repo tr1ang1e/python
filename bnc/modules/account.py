@@ -1,7 +1,5 @@
 from .exceptions import bnc_lib_exc_str, BNCAttention, BNCExceptions, BNCCritical
-from .price import Price
-from .settings import Api, Logfile
-from .utilities import init_logger
+from .settings import Api
 from binance.client import Client
 from binance.exceptions import BinanceAPIException, BinanceRequestException, BinanceOrderException, \
     BinanceOrderMinAmountException, BinanceOrderMinPriceException, BinanceOrderMinTotalException, \
@@ -28,15 +26,15 @@ class Account:
         raise: see invoked calls (get_client)
     """
 
-    def __init__(self, api: Api, logfile: Logfile, price: Price = None):
+    def __init__(self, api: Api, recv_window: int, logger):
+        self.logger = logger
+        self.recv_window = recv_window
         self.client = None
-        self.price = price
         self.get_client(api)
         self.balances = dict()          # current balance state
         self.buy_orders = dict()        # placed (not executed) orders
         self.sell_orders = dict()       # take profit (for both placed and executed buy orders)
-        self.logger = init_logger(logfile)
-        self.logger.info(f"Account instance is created, key_api: '{api.key_api[:4:]}...{api.key_api[-4::]}'")
+        self.logger.info(f"Account instance is created")
 
     def get_client(self, api: Api):
         """
@@ -45,6 +43,9 @@ class Account:
             return: no
             raise: see invoked calls (__check_permissions, __update_account_data)
         """
+        self.logger.debug(f"get_client(api={Api})")
+        self.logger.debug(f"key_api: '{api.key_api[:4:]}...{api.key_api[-4::]}'")
+        self.logger.debug(f"key_sec: '{api.key_secret[:2:]}.......{api.key_api[-2::]}'")
         self.client = Client(api.key_api, api.key_secret)
         self.__check_permissions(api.permissions)
         self.__update_account_data()
@@ -56,12 +57,13 @@ class Account:
             return: no
             raise: BNCAttention (API_ACCESS, API_PERMISSIONS)
         """
+        self.logger.debug(f"__check_permissions(expected_permissions={expected_permissions}")
         try:
-            actual_permissions = self.client.get_account_api_permissions()
+            actual_permissions = self.client.get_account_api_permissions(recvWindow=self.recv_window)
         except BinanceAPIException as ex:
             raise BNCAttention(
                 BNCExceptions.API_ACCESS,
-                f"{bnc_lib_exc_str} \n\ttype: {ex} \n\tmessage: {ex.message} \n\terror: {ex.code}"
+                f"{bnc_lib_exc_str} \n\ttype: {type(ex)} \n\tmessage: {ex.message} \n\terror: {ex.code}"
             )
 
         # check if actual permissions are enough to satisfy required ones
@@ -91,7 +93,7 @@ class Account:
         self.logger.debug(f"get_balance(assets={assets}, base_asset='{base_asset}')")
         balances = dict()
         try:
-            account_info = self.client.get_account()["balances"]
+            account_info = self.client.get_account(recvWindow=self.recv_window)["balances"]
             balances["total"] = [base_asset, 0]
             for asset in assets:
                 balances[asset] = dict()
@@ -112,7 +114,7 @@ class Account:
             error = f"\n\terror: {ex.code}" if hasattr(ex, "error") else ""
             raise BNCCritical(
                 BNCExceptions.API_ACCESS,
-                f"{bnc_lib_exc_str} \n\ttype: {ex} \n\tmessage: {ex.message} {error}"
+                f"{bnc_lib_exc_str} \n\ttype: {type(ex)} \n\tmessage: {ex.message} {error}"
             )
 
         self.logger.info("Balance:")
@@ -171,7 +173,7 @@ class Account:
                 error = f"\n\terror: {ex.code}" if hasattr(ex, "error") else ""
                 raise BNCCritical(
                     BNCExceptions.OPEN_ORDER,
-                    f"{bnc_lib_exc_str} \n\ttype: {ex} \n\tmessage: {ex.message} {error}"
+                    f"{bnc_lib_exc_str} \n\ttype: {type(ex)} \n\tmessage: {ex.message} {error}"
                 )
             except (BinanceOrderMinAmountException,
                     BinanceOrderMinPriceException,
@@ -180,7 +182,7 @@ class Account:
                     ) as ex:
                 raise BNCAttention(
                     BNCExceptions.OPEN_ORDER,
-                    f"{bnc_lib_exc_str} \n\ttype: {ex} \n\tmessage: {ex.message}"
+                    f"{bnc_lib_exc_str} \n\ttype: {type(ex)} \n\tmessage: {ex.message}"
                 )
 
     def set_order_tp(self, symbol, sell_price, quantity, attempts: int = 3):
@@ -214,7 +216,7 @@ class Account:
                 error = f"\n\terror: {ex.code}" if hasattr(ex, "error") else ""
                 raise BNCCritical(
                     BNCExceptions.TP_ORDER,
-                    f"{bnc_lib_exc_str} \n\ttype: {ex} \n\tmessage: {ex.message} {error}"
+                    f"{bnc_lib_exc_str} \n\ttype: {type(ex)} \n\tmessage: {ex.message} {error}"
                 )
             except (BinanceOrderMinAmountException,
                     BinanceOrderMinPriceException,
@@ -223,7 +225,7 @@ class Account:
                     ) as ex:
                 raise BNCAttention(
                     BNCExceptions.TP_ORDER,
-                    f"{bnc_lib_exc_str} \n\ttype: {ex} \n\tmessage: {ex.message}"
+                    f"{bnc_lib_exc_str} \n\ttype: {type(ex)} \n\tmessage: {ex.message}"
                 )
 
     def cancel_order(self, symbol: str, order_id: str, attempts: int = 3):
@@ -245,5 +247,5 @@ class Account:
                 error = f"\n\terror: {ex.code}" if hasattr(ex, "error") else ""
                 raise BNCAttention(
                     BNCExceptions.CANSEL_ORDER,
-                    f"{bnc_lib_exc_str} \n\ttype: {ex} \n\tmessage: {ex.message} {error}"
+                    f"{bnc_lib_exc_str} \n\ttype: {type(ex)} \n\tmessage: {ex.message} {error}"
                 )

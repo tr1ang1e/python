@@ -31,11 +31,10 @@ TODO, current (1. simple trading logic):
 """
 import traceback
 
-from modules import Account, Order
-from modules import BNCAttention, BNCCritical, BNCExceptions
-from modules import Price
-from modules import Api, Logfile, Settings
-from modules import carriage_return, init_logger
+from modules import Account
+from modules import BNCAttention, BNCCritical
+from modules import Settings
+from modules import parse_arguments, init_logger
 
 
 handler_logger = None
@@ -55,8 +54,10 @@ if __name__ == "__main__":
     btc = None
     price = None
     common_logger = None
+    args = parse_arguments()
+
     try:
-        settings = Settings("./settings")
+        settings = Settings("./settings", args.api)
         common_logger = init_logger(settings.account_log)
 
         # Account instance must be created before Price one, reason:

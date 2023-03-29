@@ -1,11 +1,19 @@
-from .settings import Logfile
+import sys
+import argparse
 import logging
 import logging.config
 from logging.handlers import RotatingFileHandler
+from .settings import Logfile
 
 
 def carriage_return():
     print("\r")
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--api', default='demo')
+    return parser.parse_args(sys.argv[1:])
 
 
 def init_logger(logfile: Logfile):

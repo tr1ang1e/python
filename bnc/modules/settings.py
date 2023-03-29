@@ -33,7 +33,7 @@ class Settings:
         script via every .json file in given dir.
     """
 
-    def __init__(self, settings_dir: str):
+    def __init__(self, settings_dir: str, api_name: str):
         settings_dir = os.path.abspath(settings_dir)
         ''' properties '''
         self.account_log = None
@@ -42,7 +42,7 @@ class Settings:
         self.load_properties(settings_dir)
         ''' credentials '''
         self.api_demo = None
-        self.load_credentials(settings_dir)
+        self.load_credentials(settings_dir, api_name)
 
     def load_properties(self, settings_dir):
         properties_file = "properties.json"
@@ -57,10 +57,10 @@ class Settings:
         logging_dict = properties_dict["requests"]
         self.recv_window = logging_dict["recv_window"]
 
-    def load_credentials(self, settings_dir):
+    def load_credentials(self, settings_dir, api_name):
         credentials_file = "credentials.json"
         credentials_path = os.path.join(settings_dir, credentials_file)
         credentials_fd = open(credentials_path, "r")
         credentials_dict = json.load(credentials_fd)
-        self.api_demo = Api("demo", credentials_dict["api"]["demo"])
+        self.api_demo = Api(api_name, credentials_dict["api"][api_name])
 

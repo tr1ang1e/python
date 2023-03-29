@@ -14,10 +14,6 @@ TODO, long:
 
 TODO, current (1. simple trading logic):
 
-    - ERROR: "-1022, Signature for this request is not valid"
-        > pip-upgrade
-        > new API's keys pair
-        see: https://dev.binance.vision/t/faq-signature-for-this-request-is-not-valid/176
     - account.py:
         class Order implementation
         api: get_placed_orders

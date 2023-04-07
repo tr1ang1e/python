@@ -14,6 +14,12 @@ class Logfile:
         self.max_size = logfile_dict["size"]
         self.backup_count = logfile_dict["back"]
 
+    def change_name(self, name: str):
+        self.name = name
+
+    def change_file(self, file: str):
+        self.path = os.path.join(os.path.dirname(self.path), file)
+
 
 class Api:
     """
@@ -38,6 +44,7 @@ class Settings:
         ''' properties '''
         self.account_log = None
         self.price_log = None
+        self.trader_log = dict()
         self.recv_window = None
         self.load_properties(settings_dir)
         ''' credentials '''
@@ -53,6 +60,8 @@ class Settings:
         logging_dict = properties_dict["logging"]
         self.account_log = Logfile(logging_dict["account"])
         self.price_log = Logfile(logging_dict["price"])
+        for key, value in logging_dict["trader"].items():
+            self.trader_log[key] = Logfile(value)
         ''' requests '''
         logging_dict = properties_dict["requests"]
         self.recv_window = logging_dict["recv_window"]

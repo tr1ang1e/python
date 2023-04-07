@@ -14,59 +14,82 @@ TODO, long:
 
 TODO, current (1. simple trading logic):
 
+    - bnc.py:handle_price_msg - exceptions handling
+    - trader.py:
+        class Demo: trade()
     - account.py:
-        class Order implementation
         api: get_placed_orders
         api: __update_account_data
-    - account.py: parce response for placed order
     - decide which information should be permanently shown if any
-    - bnc.py:
-        handle_price_msg:
-            - except
-            - implement trading logic
+
 """
 import traceback
+from time import sleep
 
 from modules import Account
 from modules import BNCAttention, BNCCritical
+from modules import Price
 from modules import Settings
-from modules import parse_arguments, init_logger
+from modules import Demo2
+from modules import parse_arguments
 
 
-handler_logger = None
+"""
+    There is no way to change callback signature, and therefore 
+    the global storage of 'class Trader' instances should be used
+"""
+traders = list()
 
 
 def handle_price_msg(msg):
     """
-        Main business logic function
+        Callback function: just iterates over
+        all registered accounts and calls trade
     """
+    global traders
     try:
-        print(msg["c"])   # "c" = last price
-    except Exception as ex:
-        pass
+        for tr in traders:
+            tr.trade(msg)
+    except Exception as e:
+        raise e
 
 
 if __name__ == "__main__":
     btc = None
+    account = None
     price = None
-    common_logger = None
     args = parse_arguments()
 
     try:
         settings = Settings("./settings", args.api)
-        common_logger = init_logger(settings.account_log)
 
-        # Account instance must be created before Price one, reason:
-        # Account logger is used inside callback involved by Price streams
-        account = Account(settings.api_demo, settings.recv_window, common_logger)
-        common_logger = account.logger
+        """
+            All 'Account' and 'Trader' instances must be created 
+            before Price one, because callback, used by Price class, 
+            involves 'Trader' class to proceed business logic
+        """
+
+        # Account
+        account = Account(settings.api_demo, settings.recv_window, settings.account_log)
         account.get_balance()
 
-        # executed in parallel thread
-        # price = Price(settings.price_log)
-        # price.start_ticker("BTCUSDT", handle_price_msg)
-        # sleep(4)
-        # price.stop()
+        # Trader
+        trader = Demo2(settings.trader_log['demo2'])
+        trader.add_account(account)
+        traders.append(trader)
+
+        """
+            Price class is responsible for 
+                - getting data using WebSocket connection
+                - calling callback function for new data
+                
+            Executed in parallel thread
+        """
+
+        price = Price(settings.price_log)
+        price.start_ticker("BTCUSDT", handle_price_msg)
+        sleep(20)
+        price.stop()
 
     except IOError as ex:
         print("Failed to get settings")
@@ -77,12 +100,11 @@ if __name__ == "__main__":
     except (BNCAttention, BNCCritical) as ex:
         ex_string = traceback.format_exc()
         print(ex_string)
-        common_logger.error(ex)
     except Exception as ex:
         print("Unknown EXCEPTION type raised")
         ex_string = traceback.format_exc()
         print(ex_string)
-        common_logger.error(type(ex))
-        common_logger.error(ex)
+        account.logger.error(type(ex))      # TODO: temporarily, get clear output ...
+        account.logger.error(ex)            # TODO: ... of unspecified exceptions
         # if price is not None:
         #    price.stop()

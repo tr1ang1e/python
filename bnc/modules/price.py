@@ -29,7 +29,7 @@ class Price:
     def create_ticker(self, symbol: str):
         self.logger.debug(f"create_ticker(symbol='{symbol}')")
         ticker = symbol.lower() + self.suffix
-        self.logger.info(f"Ticker: {ticker}")
+        self.logger.info(f"Result ticker: '{ticker}'")
         return ticker
 
     def start_ticker(self, symbol: str, callback):

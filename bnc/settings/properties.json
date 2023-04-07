@@ -8,6 +8,16 @@
             "size": 10000000,
             "back": 3
         },
+        "trader":
+        {
+            "demo2":
+            {
+                "directory": "./logs/traders",
+                "file": "demo.log",
+                "size": 10000000,
+                "back": 3
+            }
+        },
         "price":
         {
             "directory": "./logs/",

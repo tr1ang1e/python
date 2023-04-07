@@ -12,7 +12,7 @@ def carriage_return():
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--api', default='demo')
+    parser.add_argument('--api', default='demo2')
     return parser.parse_args(sys.argv[1:])
 
 

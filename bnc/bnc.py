@@ -15,18 +15,15 @@ TODO, long:
 TODO, current (1. simple trading logic):
 
     - bnc.py:handle_price_msg - exceptions handling
-    - trader.py:
-        class Demo: trade()
-    - account.py:
-        api: get_placed_orders
-        api: __update_account_data
+    - account.py: update_account_data()
+    - trader.py: trade()
     - decide which information should be permanently shown if any
 
 """
 import traceback
 from time import sleep
 
-from modules import Account
+from modules import Account, Order
 from modules import BNCAttention, BNCCritical
 from modules import Price
 from modules import Settings
@@ -52,7 +49,8 @@ def handle_price_msg(msg):
             tr.trade(msg)
     except Exception as e:
         # TODO: all important exceptions are here
-        raise e
+        print("EXCEPTION in HANDLE_PRICE_MSG()")
+        print(e)
 
 
 if __name__ == "__main__":
@@ -72,13 +70,15 @@ if __name__ == "__main__":
 
         # Account
         account = Account(settings.api_demo, settings.recv_window, settings.account_log)
-        # account.get_balance()
+        # order = Order('BTCUSDT', unique_id='')
+        # account.cancel_order(order)
+        account.get_balance()
 
         # Trader
-        name = 'eleven'
-        trader = Eleven(settings.trader_log[name], settings.traders[name])
-        trader.add_account(account)
-        traders.append(trader)
+        # name = 'eleven'
+        # trader = Eleven(settings.trader_log[name], settings.traders[name])
+        # trader.add_account(account)
+        # traders.append(trader)
 
         """
             Price class is responsible for 
@@ -88,10 +88,14 @@ if __name__ == "__main__":
             Executed in parallel thread
         """
 
-        price = Price(settings.price_log)
-        price.start_ticker("BTCUSDT", handle_price_msg)
-        sleep(10)
-        price.stop()
+        # price = Price(settings.price_log)
+        # price.start_ticker("BTCUSDT", handle_price_msg)
+        # sleep(5)
+        # price.stop()
+
+        # debug
+        for o in account.get_placed_orders('BTCUSDT'):
+            print(o)
 
         """
             This thread is used to initialization and to

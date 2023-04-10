@@ -37,7 +37,8 @@
         "eleven":
         {
             "orders_step": 200,
-            "orders_max": 10
+            "orders_max": 10,
+            "min_order_usdt": 10
         }
     }
 }

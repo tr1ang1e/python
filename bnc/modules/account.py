@@ -29,22 +29,27 @@ class Order:
     OPENED = 1
     CLOSED = 2
 
-    def __init__(self, symbol: str, quantity: float, price: str):
+    def __init__(self, symbol: str, quantity: float = 0.0, price: str = "0.0", unique_id: str = None):
+        """
+            Every order action requires symbol to be specified.
+            Other parameters depend on particular API function.
+        """
+
         self.status = Order.INITED
         self.symbol = symbol
+        self.type = None
         self.quantity = quantity
         self.price = price
-        self.id = None      # always corresponds to API "clientOrderId" field
-        self.side = None    # differ buy and sell orders possibility
+        self.id = unique_id             # always corresponds to API "clientOrderId" field
+        self.side = None                # differ buy and sell orders possibility
 
     def opened(self, response: dict):
         self.status = Order.OPENED
         self.side = response["side"]
         self.id = response["clientOrderId"]
         exec_quantity = float(response["executedQty"])
-        if exec_quantity < self.quantity:
-            pass
-        self.quantity = exec_quantity
+        if exec_quantity and (exec_quantity < self.quantity):
+            self.quantity = exec_quantity
         return self
 
 
@@ -79,7 +84,7 @@ class Account:
             Initialize account data and prepare environment.
 
             return: no
-            raise: see invoked calls (__check_permissions, __update_account_data)
+            raise: see invoked calls (check_permissions, update_account_data)
         """
         self.logger.debug(f"get_client(api='{api.name}')")
         self.logger.debug(f"    key_api: '{api.key_api[:4:]}...{api.key_api[-4::]}'")
@@ -198,11 +203,12 @@ class Account:
             If order PRICE is GREATER than market price, the order
             will be executed by current market price.
 
-            return: no
-            raise: BNCAttention, BNCCritical (OPEN_ORDER)
+            return: class Order
+            raise: see invoked calls (place order)
         """
         try:
-            order = self.place_order(OrderType.BUY_LIMIT, order, attempts)
+            order.type = OrderType.BUY_LIMIT
+            order = self.place_order(order, attempts)
             return order
         except Exception as ex:
             raise ex
@@ -212,20 +218,28 @@ class Account:
             If order PRICE is LESS than market price, the order
             will be executed by current market price.
 
-            return: no
-            raise: BNCAttention, BNCCritical (TP_ORDER)
+            return: class Order
+            raise: see invoked calls (place order)
         """
         try:
-            order = self.place_order(OrderType.SELL_LIMIT, order, attempts)
+            order.type = OrderType.SELL_LIMIT
+            order = self.place_order(order, attempts)
             return order
         except Exception as ex:
             raise ex
 
-    def place_order(self, order_type: OrderType, order: Order, attempts: int):
+    def place_order(self, order: Order, attempts: int):
+        """
+            Generic function for placing orders.
+
+            return: class Order
+            raise: BNCAttention, BNCCritical (PLACE_ORDER)
+        """
         symbol = order.symbol
+        order_type = order.type
         price = order.price
         quantity = order.quantity
-        self.logger.debug("place_order(order={}, symbol={}, price={}, quantity={}, attempts={}".format(
+        self.logger.debug("place_order(order={}, symbol={}, price={}, quantity={}, attempts={})".format(
             order_type.name,
             symbol,
             price,
@@ -245,10 +259,11 @@ class Account:
                 self.logger.debug(f"    attempt {attempt + 1} of {attempts}")
                 response = api[order_type](symbol=symbol, price=price, quantity=quantity, newOrderRespType="RESULT")
                 order = order.opened(response)
-                self.logger.info("Order PLACED successfully. \n\tID: {} \n\tquantity: {}".format(
-                    order.id,
-                    order.quantity
-                ))
+                self.logger.info(f"Order PLACED:")
+                self.logger.info(f"    type: {order.type.name}")
+                self.logger.info(f"    price: {order.price}")
+                self.logger.info(f"    quantity: {order.quantity}")
+                self.logger.info(f"    ID: '{order.id}'")
                 return order
             except (BinanceRequestException,
                     BinanceAPIException,
@@ -258,7 +273,7 @@ class Account:
                     continue
                 error = f"\n\terror: {ex.code}" if hasattr(ex, "error") else ""
                 raise BNCCritical(
-                    BNCExceptions.TP_ORDER,
+                    BNCExceptions.PLACE_ORDER,
                     f"{bnc_lib_exc_str} \n\ttype: {type(ex)} \n\tmessage: {ex.message} {error}"
                 )
             except (BinanceOrderMinAmountException,
@@ -266,7 +281,7 @@ class Account:
                     BinanceOrderMinTotalException,
                     BinanceOrderUnknownSymbolException) as ex:
                 raise BNCAttention(
-                    BNCExceptions.TP_ORDER,
+                    BNCExceptions.PLACE_ORDER,
                     f"{bnc_lib_exc_str} \n\ttype: {type(ex)} \n\tmessage: {ex.message}"
                 )
 
@@ -275,17 +290,17 @@ class Account:
             Cansel order which was placed on
             market but still wasn't executed.
 
-            return: no
+            return: class Order
             raise: BNCAttention (CANSEL_ORDER)
         """
         symbol = order.symbol
-        order_id = order.id
-        self.logger.debug(f"cancel_order(symbol='{symbol}', id={order_id})")
+        unique_id = order.id
+        self.logger.debug(f"cancel_order(symbol='{symbol}', unique_id={unique_id})")
         for attempt in range(attempts):
             try:
                 self.logger.debug(f"    attempt {attempt + 1} of {attempts}")
-                self.client.cancel_order(symbol=symbol, origClientOrderId=order_id)
-                self.logger.info(f"Order CANCELLED successfully. ID: {order.id}")
+                self.client.cancel_order(symbol=symbol, origClientOrderId=unique_id)
+                self.logger.info(f"Order CANCELLED, ID: '{order.id}'")
                 break
             except (BinanceAPIException, BinanceRequestException) as ex:
                 if (attempt + 1) < attempts:

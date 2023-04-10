@@ -10,10 +10,10 @@
         },
         "trader":
         {
-            "demo2":
+            "eleven":
             {
                 "directory": "./logs/traders",
-                "file": "demo.log",
+                "file": "eleven.log",
                 "size": 10000000,
                 "back": 3
             }
@@ -30,5 +30,14 @@
     "requests":
     {
         "recv_window": 5000
+    },
+
+    "traders":
+    {
+        "eleven":
+        {
+            "orders_step": 200,
+            "orders_max": 10
+        }
     }
 }

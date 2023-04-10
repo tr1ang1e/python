@@ -64,6 +64,7 @@ class Account:
         self.client = None
         self.get_client(api)
         self.balances = dict()          # current balance state
+        self.placed_orders = list()     # placed but not executed orders
 
         '''
         self.buy_orders = dict()        # placed (not executed) orders
@@ -161,13 +162,24 @@ class Account:
             self.logger.info(f"    {key} = {value}")
         return self.balances
 
-    def get_placed_orders(self):
+    def get_placed_orders(self, symbol: str):
         """
             Get all orders were placed on
             market but still weren't executed.
+
+            return: self.placed_orders
+            raise: BNCAttention (GET_ORDERS)
         """
-        self.logger.debug(f"get_placed_orders()")
-        pass
+        self.logger.debug(f"get_placed_orders(symbol='{symbol}')")
+        try:
+            self.placed_orders = self.client.get_open_orders(symbol=symbol, recvWindow=self.recv_window)
+            return self.placed_orders
+        except (BinanceAPIException, BinanceRequestException) as ex:
+            error = f"\n\terror: {ex.code}" if hasattr(ex, "error") else ""
+            raise BNCAttention(
+                BNCExceptions.GET_ORDERS,
+                f"{bnc_lib_exc_str} \n\ttype: {type(ex)} \n\tmessage: {ex.message} {error}"
+            )
 
     def get_single_price(self, symbol: str):
         """

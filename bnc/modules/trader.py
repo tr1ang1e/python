@@ -27,10 +27,12 @@ class Trader:
         raise NotImplementedError
 
 
-class Demo2(Trader):
+class Eleven(Trader):
 
-    def __init__(self, logfile: Logfile):
+    def __init__(self, logfile: Logfile, parameters: dict):
         super().__init__(logfile)
+        self.orders_step = parameters['orders_step']
+        self.orders_max = parameters['orders_max']
 
     def add_account(self, account: Account):
         """

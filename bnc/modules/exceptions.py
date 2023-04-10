@@ -13,6 +13,8 @@ class BNCExceptions(Enum):
     OPEN_ORDER = 4
     TP_ORDER = 5
     CANSEL_ORDER = 6
+    INCORRECT_ARGS = 7
+    GET_ORDERS = 8
 
 
 class BNCAttention(Exception):

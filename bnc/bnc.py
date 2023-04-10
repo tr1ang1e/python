@@ -30,7 +30,7 @@ from modules import Account
 from modules import BNCAttention, BNCCritical
 from modules import Price
 from modules import Settings
-from modules import Demo2
+from modules import Eleven
 from modules import parse_arguments
 
 
@@ -51,6 +51,7 @@ def handle_price_msg(msg):
         for tr in traders:
             tr.trade(msg)
     except Exception as e:
+        # TODO: all important exceptions are here
         raise e
 
 
@@ -71,12 +72,13 @@ if __name__ == "__main__":
 
         # Account
         account = Account(settings.api_demo, settings.recv_window, settings.account_log)
-        account.get_balance()
+        # account.get_balance()
 
         # Trader
-        # trader = Demo2(settings.trader_log['demo2'])
-        # trader.add_account(account)
-        # traders.append(trader)
+        name = 'eleven'
+        trader = Eleven(settings.trader_log[name], settings.traders[name])
+        trader.add_account(account)
+        traders.append(trader)
 
         """
             Price class is responsible for 
@@ -86,17 +88,22 @@ if __name__ == "__main__":
             Executed in parallel thread
         """
 
-        # price = Price(settings.price_log)
-        # price.start_ticker("BTCUSDT", handle_price_msg)
-        # sleep(20)
-        # price.stop()
+        price = Price(settings.price_log)
+        price.start_ticker("BTCUSDT", handle_price_msg)
+        sleep(10)
+        price.stop()
+
+        """
+            This thread is used to initialization and to
+            starting the work. So no exceptions require
+            handling due to business logic thread
+            is started by the last instruction above.
+        """
 
     except IOError as ex:
         print("Failed to get settings")
         ex_string = traceback.format_exc()
         print(ex_string)
-    # BNCCritical doesn't require special handling,
-    # due to no real account work wasn't started yet
     except (BNCAttention, BNCCritical) as ex:
         ex_string = traceback.format_exc()
         print(ex_string)
@@ -104,7 +111,6 @@ if __name__ == "__main__":
         print("Unknown EXCEPTION type raised")
         ex_string = traceback.format_exc()
         print(ex_string)
-        account.logger.error(type(ex))      # TODO: temporarily, get clear output ...
-        account.logger.error(ex)            # TODO: ... of unspecified exceptions
+        account.logger.error(ex_string)      # TODO: temporarily, get clear output of unspecified exceptions
         # if price is not None:
         #    price.stop()

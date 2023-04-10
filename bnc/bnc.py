@@ -61,7 +61,7 @@ if __name__ == "__main__":
     args = parse_arguments()
 
     try:
-        settings = Settings("./settings", args.api)
+        settings = Settings("./settings", args)
 
         """
             All 'Account' and 'Trader' instances must be created 
@@ -74,9 +74,9 @@ if __name__ == "__main__":
         account.get_balance()
 
         # Trader
-        trader = Demo2(settings.trader_log['demo2'])
-        trader.add_account(account)
-        traders.append(trader)
+        # trader = Demo2(settings.trader_log['demo2'])
+        # trader.add_account(account)
+        # traders.append(trader)
 
         """
             Price class is responsible for 
@@ -86,10 +86,10 @@ if __name__ == "__main__":
             Executed in parallel thread
         """
 
-        price = Price(settings.price_log)
-        price.start_ticker("BTCUSDT", handle_price_msg)
-        sleep(20)
-        price.stop()
+        # price = Price(settings.price_log)
+        # price.start_ticker("BTCUSDT", handle_price_msg)
+        # sleep(20)
+        # price.stop()
 
     except IOError as ex:
         print("Failed to get settings")

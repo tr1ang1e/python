@@ -1,5 +1,6 @@
 import os
 import json
+from argparse import Namespace
 
 
 class Logfile:
@@ -26,11 +27,13 @@ class Api:
         Contains properties for one particular API.
     """
 
-    def __init__(self, api_name: str, api_dict: dict):
+    def __init__(self, api_name: str, api_dict: dict, is_testnet: bool):
         self.name = api_name
         self.key_api = api_dict["key_api"]
         self.key_secret = api_dict["key_secret"]
-        self.permissions = api_dict["permissions"]
+        if not is_testnet:
+            self.permissions = api_dict["permissions"]
+        self.is_testnet = is_testnet
 
 
 class Settings:
@@ -39,7 +42,7 @@ class Settings:
         script via every .json file in given dir.
     """
 
-    def __init__(self, settings_dir: str, api_name: str):
+    def __init__(self, settings_dir: str, args: Namespace):
         settings_dir = os.path.abspath(settings_dir)
         ''' properties '''
         self.account_log = None
@@ -49,7 +52,7 @@ class Settings:
         self.load_properties(settings_dir)
         ''' credentials '''
         self.api_demo = None
-        self.load_credentials(settings_dir, api_name)
+        self.load_credentials(settings_dir, args.api, args.testnet)
 
     def load_properties(self, settings_dir):
         properties_file = "properties.json"
@@ -66,10 +69,10 @@ class Settings:
         logging_dict = properties_dict["requests"]
         self.recv_window = logging_dict["recv_window"]
 
-    def load_credentials(self, settings_dir, api_name):
+    def load_credentials(self, settings_dir, api_name, is_testnet):
         credentials_file = "credentials.json"
         credentials_path = os.path.join(settings_dir, credentials_file)
         credentials_fd = open(credentials_path, "r")
         credentials_dict = json.load(credentials_fd)
-        self.api_demo = Api(api_name, credentials_dict["api"][api_name])
+        self.api_demo = Api(api_name, credentials_dict["api"][api_name], is_testnet)
 

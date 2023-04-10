@@ -12,7 +12,8 @@ def carriage_return():
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--api', default='demo2')
+    parser.add_argument('--api', default='testnet')
+    parser.add_argument('--testnet', action='store_true')
     return parser.parse_args(sys.argv[1:])
 
 

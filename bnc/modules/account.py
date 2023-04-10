@@ -81,13 +81,15 @@ class Account:
             raise: see invoked calls (__check_permissions, __update_account_data)
         """
         self.logger.debug(f"get_client(api='{api.name}')")
-        self.logger.debug(f"key_api: '{api.key_api[:4:]}...{api.key_api[-4::]}'")
-        self.logger.debug(f"key_sec: '{api.key_secret[:2:]}.......{api.key_api[-2::]}'")
-        self.client = Client(api.key_api, api.key_secret)
-        self.__check_permissions(api.permissions)
-        self.__update_account_data()
+        self.logger.debug(f"    key_api: '{api.key_api[:4:]}...{api.key_api[-4::]}'")
+        self.logger.debug(f"    key_sec: '{api.key_secret[:2:]}.......{api.key_api[-2::]}'")
+        self.logger.debug(f"    using testnet: {api.is_testnet}")
+        self.client = Client(api.key_api, api.key_secret, testnet=api.is_testnet)
+        if not api.is_testnet:
+            self.check_permissions(api.permissions)
+            self.update_account_data()
 
-    def __check_permissions(self, expected_permissions):
+    def check_permissions(self, expected_permissions):
         """
             Check if expected API permissions correspond to actual
 
@@ -111,7 +113,7 @@ class Account:
                     "Check expected permissions and actual ones: https://www.binance.com/ru/my/settings/api-management"
                 )
 
-    def __update_account_data(self):
+    def update_account_data(self):
         """
             TODO: make connecting to account safe
                 - update balance
@@ -156,7 +158,7 @@ class Account:
 
         self.logger.info("Balance:")
         for key, value in self.balances.items():
-            self.logger.info(f"      {key} = {value}")
+            self.logger.info(f"    {key} = {value}")
         return self.balances
 
     def get_placed_orders(self):
@@ -176,7 +178,7 @@ class Account:
         """
         self.logger.debug(f"get_single_price(symbol='{symbol}')")
         price_list = self.client.get_symbol_ticker(symbol=symbol)
-        self.logger.info(f"      price={price_list['price']}")
+        self.logger.info(f"'{symbol}' = {price_list['price']}")
         return price_list['price']
 
     def buy_limit(self, order: Order, attempts: int = 3):

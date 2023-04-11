@@ -37,8 +37,9 @@
         "eleven":
         {
             "orders_step": 200,
-            "orders_max": 10,
-            "min_order_usdt": 10
+            "min_price_offset": 20,
+            "orders_max": 5,
+            "order_usdt": 10
         }
     }
 }

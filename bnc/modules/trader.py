@@ -28,13 +28,48 @@ class Trader:
 
 
 class Eleven(Trader):
+    """
+        --------------------------------------------------------------------
+        ---------------------------- Parameters ----------------------------
+
+        ORDERS_STEP =
+            distance between two co-directional orders
+            valid: [ x ]
+                possible values are theoretically any. Current algorithm
+                implementation assumes that parameter also specifies
+                distance between placed order and corresponding Take Profit,
+                so be aware of commission (is taken for both order and TP).
+
+        MIN_PRICE_OFFSET =
+            minimal (current_price - order_price) distance
+            valid: [0...inf]
+                no direct platform restrictions. The reason is to achieve
+                precise execution in cases when current_price is too close
+                to order_prise and net connection might affect.
+
+        ORDERS_MAX
+            number of orders PAIRS are placed in market simultaneously.
+            valid: [1...5]
+                currently stop-limit orders are used to provide Take Profit
+                functionality, so max pairs number is limited by either
+                limit orders or stop-limit orders allowed number. Platform
+                allows 200 limit and 5 stop-limit orders, therefore parameter
+                value is in the range from 1 to 5.
+
+        ORDER_USDT =
+            order size in USDT to be placed
+            valid: [10...inf]
+                currently minimal quantity is allowed by platform
+                is 10 USDT, therefore parameter value can't be less.
+    """
 
     def __init__(self, logfile: Logfile, parameters: dict):
         super().__init__(logfile)
         self.symbol = 'BTCUSDT'
         self.orders_step = parameters['orders_step']
+        self.min_price_offset = parameters['min_price_offset']
         self.orders_max = parameters['orders_max']
-        self.min_order_usdt = parameters['min_order_usdt']
+        self.order_usdt = parameters['order_usdt']
 
         # debug
         self.flag = False
@@ -51,14 +86,21 @@ class Eleven(Trader):
         self.account = account
 
     def get_quantity(self, price):
-        raw = round((self.min_order_usdt / price), 6)
+        raw = round((self.order_usdt / price), 6)
         shift = 10000
         actual = (int(raw * shift) + 1) / shift
         return raw, actual
 
+    def get_orders_prices(self, current_price):
+        enter_price = (current_price // self.orders_step) * self.orders_step
+        if enter_price >= (current_price + self.min_price_offset):
+            enter_price -= self.orders_step
+        tp_price = enter_price + self.orders_step
+        return enter_price, tp_price
+
     def log_order(self, raw_quantity: float, order: Order):
         self.logger.info(f"Order PLACED:")
-        self.logger.info(f"    type: {order.type.name}")
+        self.logger.info(f"    type: {order.order_type.name}")
         self.logger.info(f"    price: {order.price}")
         self.logger.info(f"    quantity: raw={raw_quantity}, actual={order.quantity}")
         self.logger.info(f"    ID: '{order.id}'")
@@ -71,11 +113,16 @@ class Eleven(Trader):
 
         self.flag = True
         try:
-            # price_order = float(price_current) - 1000.00
-            # raw_quantity, act_quantity = self.get_quantity(price_order)
-            # order = Order(self.symbol, act_quantity, str(price_order))
-            # order = self.account.sell_limit(order)
-            # self.log_order(raw_quantity, order)
-            pass
+            price_order = float(price_current) + 1000.00
+            raw_quantity, act_quantity = self.get_quantity(price_order)
+
+            order = Order(
+                symbol=self.symbol,
+                quantity=act_quantity,
+                price=str(price_order)
+            )
+
+            order = self.account.sell_limit(order)
+            self.log_order(raw_quantity, order)
         except Exception as ex:
             raise ex

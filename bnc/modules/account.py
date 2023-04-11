@@ -9,10 +9,32 @@ from enum import Enum
 
 
 class OrderType(Enum):
+    """
+        Market orders.
+        Are executed by current price.
+    """
     BUY_MARKET = 0
-    BUY_LIMIT = 1
-    SELL_MARKET = 2
+    SELL_MARKET = 1
+
+    """
+        Limit orders. Are executed by:
+            - given price if it's better then market
+            - market price if it's better then given
+    """
+    BUY_LIMIT = 2
     SELL_LIMIT = 3
+
+    """
+        Stop-limit orders. 
+        Description:
+        
+            STOP_LOSS_LIMIT is equal to stop-limit
+                1. price achieves 'stopPrice'
+                2. limit order is placed by 'price'
+                    will be executed immediately if price is better
+                    for ...
+    """
+    STOP_LIMIT = 4
 
 
 class Order:
@@ -29,7 +51,10 @@ class Order:
     OPENED = 1
     CLOSED = 2
 
-    def __init__(self, symbol: str, quantity: float = 0.0, price: str = "0.0", unique_id: str = None):
+    def __init__(self, symbol: str, quantity: float = 0.0,
+                 side: str = None, order_type: OrderType = None,
+                 price: str = "0.0", stop_price: str = "0.0",
+                 unique_id: str = None):
         """
             Every order action requires symbol to be specified.
             Other parameters depend on particular API function.
@@ -37,9 +62,11 @@ class Order:
 
         self.status = Order.INITED
         self.symbol = symbol
-        self.type = None
         self.quantity = quantity
+        self.side = side
+        self.order_type = order_type
         self.price = price
+        self.stop_price = stop_price
         self.id = unique_id             # always corresponds to API "clientOrderId" field
         self.side = None                # differ buy and sell orders possibility
 
@@ -70,13 +97,6 @@ class Account:
         self.get_client(api)
         self.balances = dict()          # current balance state
         self.placed_orders = list()     # placed but not executed orders
-
-        '''
-        self.buy_orders = dict()        # placed (not executed) orders
-        self.sell_orders = dict()       # take profit (for both placed and executed buy orders)
-        self.pair = 0                   # unique ID to be able to match buy-sell pairs
-        '''
-
         self.logger.info(f"Account instance is created")
 
     def get_client(self, api: Api):
@@ -121,7 +141,7 @@ class Account:
 
     def update_account_data(self):
         """
-            TODO: make connecting to account safe
+            TODO: make connecting to account process safe
                 - update balance
                 - synchronize opened orders
         """
@@ -129,8 +149,8 @@ class Account:
 
     def get_balance(self, assets=("btc", "usdt"), base_asset="usdt"):
         """
-            Slow operation. Reimplement logic.
-            (bad to call in WebSocket callback function)
+            Get account balance according to the passed assets list.
+            Total balance is given in base_asset.
 
             return: self.balances
             raise: BNCCritical (API_ACCESS)
@@ -207,7 +227,7 @@ class Account:
             raise: see invoked calls (place order)
         """
         try:
-            order.type = OrderType.BUY_LIMIT
+            order.order_type = OrderType.BUY_LIMIT
             order = self.place_order(order, attempts)
             return order
         except Exception as ex:
@@ -222,7 +242,7 @@ class Account:
             raise: see invoked calls (place order)
         """
         try:
-            order.type = OrderType.SELL_LIMIT
+            order.order_type = OrderType.SELL_LIMIT
             order = self.place_order(order, attempts)
             return order
         except Exception as ex:
@@ -235,32 +255,47 @@ class Account:
             return: class Order
             raise: BNCAttention, BNCCritical (PLACE_ORDER)
         """
-        symbol = order.symbol
-        order_type = order.type
-        price = order.price
-        quantity = order.quantity
         self.logger.debug("place_order(order={}, symbol={}, price={}, quantity={}, attempts={})".format(
-            order_type.name,
-            symbol,
-            price,
-            quantity,
+            order.order_type.name,
+            order.symbol,
+            order.price,
+            order.quantity,
             attempts
         ))
 
         api = {
             OrderType.BUY_MARKET: None,
-            OrderType.BUY_LIMIT: self.client.order_limit_buy,
             OrderType.SELL_MARKET: None,
-            OrderType.SELL_LIMIT: self.client.order_limit_sell
+            OrderType.BUY_LIMIT: self.client.order_limit_buy,
+            OrderType.SELL_LIMIT: self.client.order_limit_sell,
+            OrderType.STOP_LIMIT: self.client.create_order
         }
 
         for attempt in range(attempts):
             try:
                 self.logger.debug(f"    attempt {attempt + 1} of {attempts}")
-                response = api[order_type](symbol=symbol, price=price, quantity=quantity, newOrderRespType="RESULT")
+
+                ''' prepare arguments '''
+
+                args = {
+                    "symbol": order.symbol,
+                    "price": order.price,
+                    "quantity": order.quantity,
+                    "newOrderRespType": "RESULT"
+                }
+
+                if order.order_type == OrderType.STOP_LIMIT:
+                    args['side'] = order.side
+                    args['type'] = Client.ORDER_TYPE_STOP_LOSS_LIMIT
+                    args['timeInForce'] = Client.TIME_IN_FORCE_GTC
+                    args['stopPrice'] = order.stop_price
+
+                ''' place order '''
+
+                response = api[order.order_type](**args)
                 order = order.opened(response)
                 self.logger.info(f"Order PLACED:")
-                self.logger.info(f"    type: {order.type.name}")
+                self.logger.info(f"    type: {order.order_type.name}")
                 self.logger.info(f"    price: {order.price}")
                 self.logger.info(f"    quantity: {order.quantity}")
                 self.logger.info(f"    ID: '{order.id}'")

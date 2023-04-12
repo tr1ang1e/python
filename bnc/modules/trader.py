@@ -1,3 +1,4 @@
+from binance.client import Client
 from .account import Account, Order
 from .settings import Logfile
 from .utilities import init_logger
@@ -100,10 +101,9 @@ class Eleven(Trader):
 
     def log_order(self, raw_quantity: float, order: Order):
         self.logger.info(f"Order PLACED:")
-        self.logger.info(f"    type: {order.order_type.name}")
-        self.logger.info(f"    price: {order.price}")
+        self.logger.info(f"    ID: '{order.unique_id}'")
+        self.logger.info(f"    symbol: {order.symbol}, side/type: {order.order_type}/{order.side}")
         self.logger.info(f"    quantity: raw={raw_quantity}, actual={order.quantity}")
-        self.logger.info(f"    ID: '{order.id}'")
 
     def trade(self, msg: dict):
         price_current = msg['c']
@@ -119,10 +119,12 @@ class Eleven(Trader):
             order = Order(
                 symbol=self.symbol,
                 quantity=act_quantity,
-                price=str(price_order)
+                price=str(price_order),
+                side=Client.SIDE_SELL,
+                order_type=Client.ORDER_TYPE_STOP_LOSS_LIMIT,
             )
 
-            order = self.account.sell_limit(order)
+            order = self.account.place_order(order)
             self.log_order(raw_quantity, order)
         except Exception as ex:
             raise ex

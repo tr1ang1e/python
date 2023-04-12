@@ -15,7 +15,6 @@ TODO, long:
 TODO, current (1. simple trading logic):
 
     - bnc.py:handle_price_msg - exceptions handling
-    - account.py: how does Client.place_order() with stop-limit order work?
     - trader.py: trade()
     - decide which information should be permanently shown if any
 
@@ -71,8 +70,9 @@ if __name__ == "__main__":
 
         # Account
         account = Account(settings.api_demo, settings.recv_window, settings.account_log)
-        order = Order('BTCUSDT', unique_id='KLH3LhgUQXs625Bt6k89kU')
+        # order = Order('BTCUSDT', unique_id='')
         # account.cancel_order(order)
+        # account.cansel_all_orders(['BTCUSDT'])
         account.get_balance()
 
         # Trader
@@ -89,11 +89,12 @@ if __name__ == "__main__":
             Executed in parallel thread
         """
 
+        # debug
         flag = 0
         if flag:
             price = Price(settings.price_log)
             price.start_ticker("BTCUSDT", handle_price_msg)
-            sleep(3)
+            sleep(4)
             price.stop()
 
         # debug

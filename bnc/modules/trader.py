@@ -118,10 +118,9 @@ class Eleven(Trader):
 
             order = Order(
                 symbol=self.symbol,
-                quantity=act_quantity,
-                price=str(price_order),
                 side=Client.SIDE_SELL,
-                order_type=Client.ORDER_TYPE_STOP_LOSS_LIMIT,
+                quantity=act_quantity,
+                stop_price=str(price_order)
             )
 
             order = self.account.place_order(order)

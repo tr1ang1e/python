@@ -74,6 +74,7 @@ if __name__ == "__main__":
         # account.cancel_order(order)
         # account.cansel_all_orders(['BTCUSDT'])
         account.get_balance()
+        account.get_symbol_info("BTCUSDT")
 
         # Trader
         name = 'eleven'
@@ -98,8 +99,8 @@ if __name__ == "__main__":
             price.stop()
 
         # debug
-        for o in account.get_placed_orders('BTCUSDT'):
-            print(o)
+        # for o in account.get_placed_orders('BTCUSDT'):
+            # print(o)
 
         """
             This thread is used to initialization and to

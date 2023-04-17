@@ -14,6 +14,7 @@ class BNCExceptions(Enum):
     CANSEL_ORDER = 5
     INCORRECT_ARGS = 6
     GET_ORDERS = 7
+    SYMBOL_INFO = 8
 
 
 class BNCAttention(Exception):

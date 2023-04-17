@@ -7,6 +7,31 @@ from binance.exceptions import BinanceAPIException, BinanceRequestException, Bin
     BinanceOrderUnknownSymbolException, BinanceOrderInactiveSymbolException
 
 
+class Symbol:
+    """
+        Contains information about symbol
+    """
+
+    def __init__(self, info: dict):
+        self.symbol = info['symbol']
+        self.base_asset = info['baseAsset']
+        self.quote_asset = info['quoteAsset']
+        self.order_types = info['orderTypes']
+        self.min_notional = None    # minimal order size in quote asset
+        self.max_limit_orders = None
+        self.max_stop_orders = None
+
+        for f in info['filters']:
+            for key, value in f.items():
+                if key == 'filterType':
+                    if value == 'MIN_NOTIONAL':
+                        self.min_notional = float(f['minNotional'])
+                    if value == 'MAX_NUM_ORDERS':
+                        self.max_num_orders = int(f['maxNumOrders'])
+                    if value == 'MAX_NUM_ALGO_ORDERS':
+                        self.max_algo_orders = int(f['maxNumAlgoOrders'])
+
+
 class Order:
     """
         Contains full info about order
@@ -154,6 +179,38 @@ class Account:
             self.logger.info(f"    {key} = {value}")
         return self.balances
 
+    def get_single_price(self, symbol: str):
+        """
+            Get current market price for specified symbol.
+
+            return: price
+            raise: see invoked calls (binance.Client.get_symbol_ticker)
+        """
+        self.logger.debug(f"get_single_price(symbol='{symbol}')")
+        price_list = self.client.get_symbol_ticker(symbol=symbol)
+        self.logger.info(f"'{symbol}' = {price_list['price']}")
+        return price_list['price']
+
+    def get_symbol_info(self, symbol: str):
+        """
+            Get information about specified symbol.
+            Not all information is printed. See 'class Symbol'.
+
+            return: class Symbol
+            raise: BNCAttention (SYMBOL_INFO)
+        """
+        self.logger.debug(f"get_symbol_info(symbol='{symbol}')")
+
+        try:
+            symbol = Symbol(self.client.get_symbol_info(symbol=symbol))
+            return symbol
+        except (BinanceAPIException, BinanceRequestException) as ex:
+            error = f"\n\terror: {ex.code}" if hasattr(ex, "error") else ""
+            raise BNCAttention(
+                BNCExceptions.SYMBOL_INFO,
+                f"{bnc_lib_exc_str} \n\ttype: {type(ex)} \n\tmessage: {ex.message} {error}"
+            )
+
     def get_placed_orders(self, symbol: str):
         """
             Get all orders were placed on
@@ -172,18 +229,6 @@ class Account:
                 BNCExceptions.GET_ORDERS,
                 f"{bnc_lib_exc_str} \n\ttype: {type(ex)} \n\tmessage: {ex.message} {error}"
             )
-
-    def get_single_price(self, symbol: str):
-        """
-            Get current market price for specified symbol.
-
-            return: price
-            raise: see invoked calls (binance.Client.get_symbol_ticker)
-        """
-        self.logger.debug(f"get_single_price(symbol='{symbol}')")
-        price_list = self.client.get_symbol_ticker(symbol=symbol)
-        self.logger.info(f"'{symbol}' = {price_list['price']}")
-        return price_list['price']
 
     def buy_limit(self, order: Order, attempts: int = 3):
         """
@@ -232,9 +277,15 @@ class Account:
             Generic function for placing orders.
 
             Mandatory fields if Order.order_type is:
-                Client.ORDER_TYPE_LIMIT                 symbol, price, side, type, quantity
-                Client.ORDER_TYPE_STOP_LOSS_LIMIT       ... + stopPrice
-                auto added inside this function         timeInForce, newOrderRespType
+                Client.ORDER_TYPE_LIMIT                     symbol, price, side, type, quantity
+                Client.ORDER_TYPE_STOP_LOSS_LIMIT           .ORDER_TYPE_LIMIT + stopPrice
+            Auto added inside this function                 timeInForce, newOrderRespType
+
+
+                                STOP_LOSS       TAKE_PROFIT
+            price above               BUY              SELL
+            price below              SELL               BUY
+
 
             return: class Order
             raise: BNCAttention, BNCCritical (PLACE_ORDER)
@@ -247,24 +298,27 @@ class Account:
             attempts
         ))
 
+        stop_price_required = [Client.ORDER_TYPE_STOP_LOSS_LIMIT]
+
         for attempt in range(attempts):
             try:
                 self.logger.debug(f"    attempt {attempt + 1} of {attempts}")
 
                 ''' prepare arguments '''
 
+                # always required
                 args = {
                     "symbol": order.symbol,
                     "side": order.side,
                     "type": order.order_type,
                     "price": order.price,
                     "quantity": order.quantity,
-
-                    "timeInForce": Client.TIME_IN_FORCE_GTC,        # mandatory, but always the same
-                    "newOrderRespType": "RESULT"                    # optional parameter, most convenient
+                    "timeInForce": Client.TIME_IN_FORCE_GTC,    # always required
+                    "newOrderRespType": "RESULT"                # most convenient
                 }
 
-                if order.order_type == Client.ORDER_TYPE_STOP_LOSS_LIMIT:
+                # not always required
+                if order.order_type in stop_price_required:
                     args['stopPrice'] = order.stop_price
 
                 ''' place order '''
@@ -278,9 +332,9 @@ class Account:
                 self.logger.info(f"    ID: '{order.unique_id}'")
                 self.logger.info(f"    symbol: {order.symbol}, side/type: {order.order_type}/{order.side}")
                 self.logger.info(f"    price: {order.price}")
-                self.logger.info(f"    quantity: {order.quantity}")
-                if order.order_type == Client.ORDER_TYPE_STOP_LOSS_LIMIT:
+                if order.order_type in stop_price_required:
                     self.logger.info(f"    stop price: {order.stop_price}")
+                self.logger.info(f"    quantity: {order.quantity}")
 
                 return order
             except (BinanceRequestException,

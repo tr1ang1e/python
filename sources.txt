@@ -1,7 +1,0 @@
-Python documentation:
-
-    Data Model = https://docs.python.org/3/reference/datamodel.html                     3.3. Special method names
-
-Articles
-
-    Заметки об объектной системе = https://habr.com/ru/post/114585/                     О поиске атрибутов в классе

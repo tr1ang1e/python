@@ -33,9 +33,11 @@ from modules import parse_arguments
 
 """
     There is no way to change callback signature, and therefore 
-    the global storage of 'class Trader' instances should be used
+        - the global storage of 'class Trader' instances should be used
+        - different variables should be declared as global
 """
 traders = list()
+stop_executing = False
 
 
 def handle_price_msg(msg):
@@ -44,6 +46,7 @@ def handle_price_msg(msg):
         all registered accounts and calls trade
     """
     global traders
+    global stop_executing
     try:
         for tr in traders:
             tr.trade(msg)
@@ -52,6 +55,7 @@ def handle_price_msg(msg):
         print("EXCEPTION in HANDLE_PRICE_MSG()")
         print(e)
         print(traceback.format_exc())
+        stop_executing = True
 
 
 if __name__ == "__main__":
@@ -89,30 +93,26 @@ if __name__ == "__main__":
         """
 
         # debug
-        flag = 1
-        if flag:
-            price = Price(settings.price_log)
-            price.start_ticker("BTCUSDT", handle_price_msg)
-            sleep(12)
-            price.stop()
+        # every new launch is on the clean data
+        print("CANCEL ORDERS")
+        account.cansel_all_orders(['BTCUSDT'])
+
+        price = Price(settings.price_log)
+        price.start_ticker("BTCUSDT", handle_price_msg)
+        while not stop_executing:
+            sleep(2)
+        price.stop()
 
         # debug
-        if not flag:
-            print("CANCEL ORDERS")
-            account.cansel_all_orders(['BTCUSDT'])
-
-        # debug
-        flag = 1
-        if flag:
-            print("PLACED ORDERS")
-            for o in account.get_placed_orders('BTCUSDT'):
-                print(f"{o.unique_id} = {o.symbol}, {o.side}/{o.order_type}, {o.price}, {o.quantity}")
+        # inspect the last algorithm state
+        print("PLACED ORDERS")
+        for o in account.get_placed_orders('BTCUSDT'):
+            print(f"{o.unique_id} = {o.symbol}, {o.side}/{o.order_type}, {o.price}, {o.quantity}")
 
         """
-            This thread is used to initialization and to
+            This thread is used for initialization and for
             starting the work. So no exceptions require
-            handling due to business logic thread
-            is started by the last instruction above.
+            handling due to business logic is in another thread
         """
 
     except IOError as ex:

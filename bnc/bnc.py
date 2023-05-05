@@ -4,9 +4,9 @@ TODO, long:
     1. simple trading logic
     2. convenient parameters setting:
         - money management
-        - orders distance
     3. telegram notifications
     4. better multithread logic: split websocket callback and trading logic
+        - "CANCEL read_loop" error: https://github.com/sammchardy/python-binance/issues/1169
     5. test on historical data
         - api: get historical data
         - class Tester
@@ -15,14 +15,15 @@ TODO, long:
 TODO, current (1. simple trading logic):
 
     - bnc.py:handle_price_msg - exceptions handling
-    - trader.py: trade()
     - decide which information should be permanently shown if any
+    - trader.py:Eleven - assumption that only one order might be executed
+                         during one iteration. Implement orders accounting
 
 """
 import traceback
 from time import sleep
 
-from modules import Account, Order
+from modules import Account
 from modules import BNCAttention, BNCCritical
 from modules import Price
 from modules import Settings
@@ -70,9 +71,6 @@ if __name__ == "__main__":
 
         # Account
         account = Account(settings.api_demo, settings.recv_window, settings.account_log)
-        # order = Order('BTCUSDT', unique_id='')
-        # account.cancel_order(order)
-        # account.cansel_all_orders(['BTCUSDT'])
         account.get_balance()
         account.get_symbol_info("BTCUSDT")
 
@@ -91,16 +89,24 @@ if __name__ == "__main__":
         """
 
         # debug
-        flag = 0
+        flag = 1
         if flag:
             price = Price(settings.price_log)
             price.start_ticker("BTCUSDT", handle_price_msg)
-            sleep(4)
+            sleep(12)
             price.stop()
 
         # debug
-        # for o in account.get_placed_orders('BTCUSDT'):
-            # print(o)
+        if not flag:
+            print("CANCEL ORDERS")
+            account.cansel_all_orders(['BTCUSDT'])
+
+        # debug
+        flag = 1
+        if flag:
+            print("PLACED ORDERS")
+            for o in account.get_placed_orders('BTCUSDT'):
+                print(f"{o.unique_id} = {o.symbol}, {o.side}/{o.order_type}, {o.price}, {o.quantity}")
 
         """
             This thread is used to initialization and to
@@ -120,6 +126,5 @@ if __name__ == "__main__":
         print("Unknown EXCEPTION type raised")
         ex_string = traceback.format_exc()
         print(ex_string)
-        account.logger.error(ex_string)      # TODO: temporarily, get clear output of unspecified exceptions
         # if price is not None:
         #    price.stop()

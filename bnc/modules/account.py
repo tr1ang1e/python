@@ -216,12 +216,24 @@ class Account:
             Get all orders were placed on
             market but still weren't executed.
 
-            return: self.placed_orders
+            return: list of Order instances
             raise: BNCAttention (GET_ORDERS)
         """
         self.logger.debug(f"get_placed_orders(symbol='{symbol}')")
         try:
-            self.placed_orders = self.client.get_open_orders(symbol=symbol, recvWindow=self.recv_window)
+            placed_orders = self.client.get_open_orders(symbol=symbol, recvWindow=self.recv_window)
+            self.placed_orders = list()
+            for o in placed_orders:
+                order = Order(
+                    symbol=o["symbol"],
+                    side=o["side"],
+                    order_type=o["type"],
+                    price=o["price"],
+                    quantity=o["origQty"],
+                    stop_price=o["stopPrice"],
+                    unique_id=o["clientOrderId"]
+                )
+                self.placed_orders.append(order)
             return self.placed_orders
         except (BinanceAPIException, BinanceRequestException) as ex:
             error = f"\n\terror: {ex.code}" if hasattr(ex, "error") else ""
@@ -387,6 +399,6 @@ class Account:
         self.logger.debug(f"cansel_all_orders(symbols={symbols})")
         for symbol in symbols:
             orders = self.get_placed_orders(symbol)
-            for item in orders:
-                order = Order(symbol=symbol, unique_id=item['clientOrderId'])
+            for o in orders:
+                order = Order(symbol=symbol, unique_id=o.unique_id)
                 self.cancel_order(order)

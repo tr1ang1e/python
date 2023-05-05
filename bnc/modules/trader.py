@@ -1,4 +1,3 @@
-from binance.client import Client
 from .account import Account, Order
 from .settings import Logfile
 from .utilities import init_logger
@@ -48,7 +47,7 @@ class Eleven(Trader):
                 precise execution in cases when current_price is too close
                 to order_prise and net connection might affect.
 
-        ORDERS_MAX
+        ORDERS_MAX =
             number of orders PAIRS are placed in market simultaneously.
             valid: [1...5]
                 currently stop-limit orders are used to provide Take Profit
@@ -66,11 +65,20 @@ class Eleven(Trader):
 
     def __init__(self, logfile: Logfile, parameters: dict):
         super().__init__(logfile)
+
         self.symbol = 'BTCUSDT'
-        self.orders_step = parameters['orders_step']
+        self.orders_step = float(parameters['orders_step'])
         self.min_price_offset = parameters['min_price_offset']
         self.orders_max = parameters['orders_max']
         self.order_usdt = parameters['order_usdt']
+
+        # store buy-limit order which:
+        #   closest to current price
+        #   placed during the last iteration
+        #   without tp is placed
+        # TODO: assumption that only one buy-limit order
+        #       might be executed between two prices are got
+        self.placed_last = Order(symbol="BTCUSDT", price="0.0", side="BUY", order_type="LIMIT")
 
         # debug
         self.flag = False
@@ -97,33 +105,92 @@ class Eleven(Trader):
         if enter_price >= (current_price + self.min_price_offset):
             enter_price -= self.orders_step
         tp_price = enter_price + self.orders_step
-        return enter_price, tp_price
+        return float(enter_price), float(tp_price)
 
     def log_order(self, raw_quantity: float, order: Order):
         self.logger.info(f"Order PLACED:")
         self.logger.info(f"    ID: '{order.unique_id}'")
         self.logger.info(f"    symbol: {order.symbol}, side/type: {order.order_type}/{order.side}")
+        self.logger.info(f"    price: {order.price}")
         self.logger.info(f"    quantity: raw={raw_quantity}, actual={order.quantity}")
 
     def trade(self, msg: dict):
-        price_current = msg['c']
-        self.logger.debug(f"trade({price_current})")
-        if self.flag:
-            return
+        place_new = list()          # potential prices for new buy-limit orders
+        tp_new = list()             # potential prices for new sell-limit orders
 
-        self.flag = True
+        # get all potential orders prices
+        current_price = float(msg['c'])
+        closest_place, closest_tp = self.get_orders_prices(current_price)
+        for i in range(self.orders_max):
+            place_new.append(closest_place - self.orders_step * i)
+            tp_new.append(closest_tp - self.orders_step * i)
+
+        # to handle from price closest to current
+        place_new.sort(reverse=True)
+        tp_new.sort(reverse=True)
+
         try:
-            price_order = float(price_current) + 1000.00
-            raw_quantity, act_quantity = self.get_quantity(price_order)
 
-            order = Order(
-                symbol=self.symbol,
-                side=Client.SIDE_SELL,
-                quantity=act_quantity,
-                stop_price=str(price_order)
-            )
+            # debug
+            print(current_price)
+            self.logger.debug(current_price)
 
-            order = self.account.place_order(order)
-            self.log_order(raw_quantity, order)
+            orders = self.account.get_placed_orders(self.symbol)
+            place_act = [float(o.price) for o in orders if o.side == "BUY"]
+            tp_act = [float(o.price) for o in orders if o.side == "SELL"]
+
+            # debug
+            # print(f"place_act: {place_act}")
+            # print(f"tp_act: {tp_act}")
+
+            # inspect if tp for self.placed_last is placed
+            is_last_tp_placed = (float(self.placed_last.price) + self.orders_step) in tp_act
+
+            for i in range(self.orders_max):
+
+                ''' TAKE PROFIT '''
+
+                if tp_new[i] in tp_act:
+                    # state: TP PLACED - CURRENT PRICE - BUY EXECUTED
+                    # buy order executed, tp placed: nothing to do
+                    continue
+
+                if (place_new[i] < float(self.placed_last.price)) \
+                        and not (float(self.placed_last.price) in place_act) \
+                        and not is_last_tp_placed:
+                    # state: TP NOT PLACED - BUY EXECUTED - CURRENT PRICE
+                    # last buy order is executed, place tp
+                    order_price = float(self.placed_last.price) + self.orders_step
+                    raw_quantity, act_quantity = self.get_quantity(order_price)
+                    order = Order(
+                        symbol=self.symbol,
+                        price=str(order_price),
+                        quantity=act_quantity
+                    )
+                    order = self.account.sell_limit(order)
+                    self.log_order(raw_quantity, order)
+                    is_last_tp_placed = True
+
+                ''' BUY LIMIT '''
+
+                if place_new[i] not in place_act:
+                    # state: CURRENT PRICE - BUY NOT PLACED
+                    # buy order not placed, place buy order
+                    order_price = place_new[i]
+                    raw_quantity, act_quantity = self.get_quantity(order_price)
+                    order = Order(
+                        symbol=self.symbol,
+                        price=str(order_price),
+                        quantity=act_quantity
+                    )
+                    order = self.account.buy_limit(order)
+                    self.log_order(raw_quantity, order)
+
+            # update closest price
+            self.placed_last.price = str(closest_place)
+
+            # debug
+            # print(f"closest_price: {self.placed_last.price}")
+
         except Exception as ex:
             raise ex

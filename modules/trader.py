@@ -140,8 +140,9 @@ class Eleven(Trader):
             tp_act = [float(o.price) for o in orders if o.side == "SELL"]
 
             # debug
-            # print(f"place_act: {place_act}")
-            # print(f"tp_act: {tp_act}")
+            self.logger.debug(f"PLACED ORDERS:")
+            self.logger.debug(f"    LIMIT/SELL ... {tp_act}")
+            self.logger.debug(f"    LIMIT/BUY .... {place_act}")
 
             # inspect if tp for self.placed_last is placed
             is_last_tp_placed = (float(self.placed_last.price) + self.orders_step) in tp_act

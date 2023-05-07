@@ -136,10 +136,11 @@ class Eleven(Trader):
             self.logger.debug(current_price)
 
             orders = self.account.get_placed_orders(self.symbol)
-            place_act = [float(o.price) for o in orders if o.side == "BUY"]
-            tp_act = [float(o.price) for o in orders if o.side == "SELL"]
+            place_act = [float(o.price) for o in orders if o.side == "BUY"].sort(reverse=True)
+            tp_act = [float(o.price) for o in orders if o.side == "SELL"].sort()
 
             # debug
+            self.logger.debug(f"PLACED LAST: {float(self.placed_last.price)}")
             self.logger.debug(f"PLACED ORDERS:")
             self.logger.debug(f"    LIMIT/SELL ... {tp_act}")
             self.logger.debug(f"    LIMIT/BUY .... {place_act}")

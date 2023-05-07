@@ -47,15 +47,16 @@ def handle_price_msg(msg):
     """
     global traders
     global stop_executing
-    try:
-        for tr in traders:
+    for tr in traders:
+        try:
             tr.trade(msg)
-    except Exception as e:
-        # TODO: all important exceptions are here
-        print("EXCEPTION in HANDLE_PRICE_MSG()")
-        print(e)
-        print(traceback.format_exc())
-        stop_executing = True
+        except Exception as e:
+            # TODO: all important exceptions are here
+            print(f"EXCEPTION in HANDLE_PRICE_MSG()")
+            print(f"EXCEPTION provider is {tr.__class__.__name__}")
+            tr.logger.debug(e)
+            tr.logger.debug(traceback.format_exc())
+            stop_executing = True
 
 
 if __name__ == "__main__":
